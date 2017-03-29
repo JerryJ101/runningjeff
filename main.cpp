@@ -1,9 +1,10 @@
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <vector>
+#include <math.h>
 
-
-#define WIDE 800
+#define WIDE 625
 #define HIGH 640
 
 #define TILESIZE 32
@@ -15,11 +16,11 @@ bool textColl(sf::Sprite a, sf::Sprite b)
 
 
 
-bool testWallColl(sf::Sprite, std::vector<sf::Sprite> walls)
+bool testWallColl(sf::Sprite hero, std::vector<sf::Sprite> walls)
 {
   for(int i=0; i< walls.size(); i++)
   {
-    if(textColl())
+    if(textColl(hero, walls[i]))
     {
       return true;
     }
@@ -44,9 +45,38 @@ int main()
    }
    map.push_back(temp);
  }
- map[12][3] = true;
+ map[5][2] = true;
+ map[6][2] = true;
+ map[7][2] = true;
+ map[8][2] = true;
+ map[9][2] = true;
+ map[10][2] = true;
+ map[11][2] = true;
+ map[12][2] = true;
+ map[4][9] = true;
+ map[5][9] = true;
+ map[6][9] = true;
+ map[7][9] = true;
+ map[8][9] = true;
+ map[9][9] = true;
+ map[10][9] = true;
+ map[11][9] = true;
 
- for(int i=0; i<map.size(); i++)
+ for(int i=0; i<tileH; i++)
+ {
+   map[i][0] = true;
+   map[i][tileW-1] = true;
+ }
+
+ for(int i=0; i<tileW; i++)
+ {
+   map[0][i] = true;
+   map[tileH-1][i] = true;
+ }
+
+
+
+for(int i=0; i<map.size(); i++)
  {
    for(int j=0; j<map[i].size(); j++)
    {
@@ -70,7 +100,15 @@ if(!enemy_texture.loadFromFile("assets/ghost.png"))
 sf::Sprite enemy;
 enemy.setTexture(enemy_texture);
 enemy.setScale(sf::Vector2f(2,2));
-enemy.setPosition(100,200);
+
+sf::Texture homing_enemy_texture;
+if(!homing_enemy_texture.loadFromFile("assets/ghost.png"))
+{
+  std::cout << "Error loading enemy texture!" << std::endl;
+}
+sf::Sprite homing_enemy;
+homing_enemy.setTexture(homing_enemy_texture);
+homing_enemy.setScale(sf::Vector2f(2,2));
 
 
 sf::Font font;
@@ -97,7 +135,6 @@ if(!hero_texture.loadFromFile("assets/blobby.png"))
 sf::Sprite hero;
 hero.setTexture(hero_texture);
 hero.setScale(sf::Vector2f(4,4));
-hero.setPosition(200,200);
 
 sf::Texture wall_texture;
 if(!wall_texture.loadFromFile("assets/stone_wall.png"))
@@ -132,6 +169,26 @@ sf::Sprite grass;
 grass.setTexture(grass_texture);
 grass.setScale(sf::Vector2f(2,2));
 
+sf::SoundBuffer grunt_buffer;
+if(!grunt_buffer.loadFromFile("assets/grunt.wav"))
+{
+  std::cout << "Error loading grunt sound!" << std::endl;
+}
+
+sf::Sound grunt;
+grunt.setBuffer(grunt_buffer);
+grunt.setPitch(1.4);
+
+
+sf::SoundBuffer music_buffer;
+if(!music_buffer.loadFromFile("assets/cave.wav"))
+{
+  std::cout << "Error loading cave music!" << std::endl;
+}
+
+sf::Sound music;
+music.setBuffer(music_buffer);
+music.setLoop(true);
 
 
 
@@ -139,11 +196,20 @@ grass.setScale(sf::Vector2f(2,2));
 int enemyDirection = 0;
 int heroSpeed = 1;
 
+double homingX = 0.5;
+double homingY = 0.5;
+double homingDist = 0;
 
 int points =10;
 
 int lives =5;
 bool takingDamage = false;
+
+hero.setPosition(TILESIZE*2, TILESIZE*2);
+enemy.setPosition(TILESIZE*4, TILESIZE*4);
+
+
+music.play();
 
 //Game Loop
   while(window.isOpen())
@@ -198,7 +264,8 @@ if(hero.getGlobalBounds().intersects(enemy.getGlobalBounds()))
 {
   if(takingDamage ==false)
   {
-    lives --;
+    lives--;
+    grunt.play();
     takingDamage = true;
   }
 }
@@ -231,6 +298,26 @@ if(enemy.getPosition().x < 0)
 {
   enemyDirection = 0;
 }
+if(testWallColl(enemy, wallArr))
+{
+  if(enemyDirection == 0)
+  {
+    enemyDirection = 1;
+  }
+  else
+  {
+    enemyDirection = 0;
+  }
+}
+
+homingDist = sqrt(pow(hero.getPosition().x - homing_enemy.getPosition().x, 2) +
+          pow(hero.getPosition().y - homing_enemy.getPosition().y, 2));
+    homingX = (hero.getPosition().x - homing_enemy.getPosition().x)/homingDist;
+    homingY = (hero.getPosition().y - homing_enemy.getPosition().y)/homingDist;
+    homing_enemy.move(homingX/2, homingY/2);
+
+
+
 //render - This is Max
 for(int i=0; i<tileH ; i++)
 {
@@ -242,6 +329,7 @@ for(int i=0; i<tileH ; i++)
 }
 
 window.draw(enemy);
+window.draw(homing_enemy);
 for(int i=0; i<wallArr.size(); i++)
 {
   window.draw(wallArr[i]);
